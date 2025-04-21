@@ -16,11 +16,19 @@ export interface LinkAccountsData {
 const auth0Service = {
   // Get current user from Auth0
   getCurrentUser: async (token: string): Promise<User> => {
-    return api.get<User>("/auth/me", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    console.log("Auth0Service: Calling /auth/me with token");
+    try {
+      const user = await api.get<User>("/auth/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log("Auth0Service: Successfully retrieved user data");
+      return user;
+    } catch (error) {
+      console.error("Auth0Service: Error retrieving user data:", error);
+      throw error;
+    }
   },
 
   // Link Auth0 account with existing account

@@ -45,6 +45,7 @@ export const Auth0Provider: React.FC<{ children: React.ReactNode }> = ({ childre
     loginWithRedirect({
       authorizationParams: {
         connection: "google-oauth2",
+        scope: import.meta.env.VITE_AUTH0_SCOPE || "openid profile email",
       },
     });
   };
@@ -54,6 +55,7 @@ export const Auth0Provider: React.FC<{ children: React.ReactNode }> = ({ childre
     loginWithRedirect({
       authorizationParams: {
         connection: "facebook",
+        scope: import.meta.env.VITE_AUTH0_SCOPE || "openid profile email",
       },
     });
   };
@@ -62,11 +64,20 @@ export const Auth0Provider: React.FC<{ children: React.ReactNode }> = ({ childre
   const handleAuth0Login = async () => {
     setIsLoading(true);
     try {
-      // Get Auth0 token
-      const token = await getAccessTokenSilently();
+      console.log("Auth0 user info:", user);
+
+      // Get Auth0 token with specific scopes
+      const token = await getAccessTokenSilently({
+        authorizationParams: {
+          scope: import.meta.env.VITE_AUTH0_SCOPE || "openid profile email",
+        },
+      });
+
+      console.log("Auth0 token received, calling backend...");
 
       // Call our API to get user data and JWT token
       const userData = await auth0Service.getCurrentUser(token);
+      console.log("Backend authentication successful");
 
       // Login with our JWT token
       login(userData.accessToken);
