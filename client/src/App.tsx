@@ -34,14 +34,17 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider delayDuration={0}>
       <Auth0Provider
-        domain={import.meta.env.VITE_AUTH0_DOMAIN || ""}
-        clientId={import.meta.env.VITE_AUTH0_CLIENT_ID || ""}
+        domain="dev-8v6uq83ygwkn1fa4.us.auth0.com"
+        clientId="SwNlu3Mc09z9PaoMl0QCsM3Ynd0GRSUs"
         authorizationParams={{
-          redirect_uri: import.meta.env.VITE_AUTH0_CALLBACK_URL || "http://localhost:8080/callback",
-          audience: import.meta.env.VITE_AUTH0_AUDIENCE,
-          scope: "openid profile email",
+          redirect_uri: "http://localhost:8080/callback",
+          audience: "https://dev-8v6uq83ygwkn1fa4.us.auth0.com",
+          scope: "openid profile email offline_access",
+          response_type: "code",
         }}
         cacheLocation="localstorage"
+        useRefreshTokens={true}
+        useFormData={true}
       >
         <AuthProvider>
           <CustomAuth0Provider>

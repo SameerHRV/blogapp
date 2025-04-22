@@ -15,12 +15,22 @@ export interface LinkAccountsData {
 
 const auth0Service = {
   // Get current user from Auth0
-  getCurrentUser: async (token: string): Promise<User> => {
+  getCurrentUser: async (token: string | any): Promise<User> => {
     console.log("Auth0Service: Calling /auth/me with token");
     try {
+      // Handle both string tokens and token objects
+      const accessToken = typeof token === "string" ? token : token.access_token;
+
+      if (!accessToken) {
+        console.error("Auth0Service: No access token provided");
+        throw new Error("No access token provided");
+      }
+
+      console.log("Auth0Service: Using access token for authentication");
+
       const user = await api.get<User>("/auth/me", {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       });
       console.log("Auth0Service: Successfully retrieved user data");
@@ -32,12 +42,25 @@ const auth0Service = {
   },
 
   // Link Auth0 account with existing account
-  linkAccounts: async (data: LinkAccountsData, token: string): Promise<User> => {
-    return api.post<User>("/auth/link-accounts", data, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  linkAccounts: async (data: LinkAccountsData, token: string | any): Promise<User> => {
+    try {
+      // Handle both string tokens and token objects
+      const accessToken = typeof token === "string" ? token : token.access_token;
+
+      if (!accessToken) {
+        console.error("Auth0Service: No access token provided for linking accounts");
+        throw new Error("No access token provided");
+      }
+
+      return api.post<User>("/auth/link-accounts", data, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+    } catch (error) {
+      console.error("Auth0Service: Error linking accounts:", error);
+      throw error;
+    }
   },
 };
 

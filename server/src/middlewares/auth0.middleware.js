@@ -5,28 +5,69 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
-// Auth0 JWT validation middleware
-export const validateAuth0Token = expressjwt({
-  secret: jwksRsa.expressJwtSecret({
-    cache: true,
-    rateLimit: true,
-    jwksRequestsPerMinute: 5,
-    jwksUri: `https://${config.auth0.domain}/.well-known/jwks.json`,
-  }),
-  audience: config.auth0.audience,
-  issuer: `https://${config.auth0.domain}/`,
-  algorithms: ["RS256"],
+// Log Auth0 configuration for debugging
+console.log("Auth0 Configuration:", {
+  domain: config.auth0.domain ? "Set" : "Not set",
+  clientId: config.auth0.clientId ? "Set" : "Not set",
+  audience: config.auth0.audience ? "Set" : "Not set",
+  jwksUri: config.auth0.domain ? `https://${config.auth0.domain}/.well-known/jwks.json` : "Not set",
 });
+
+// Auth0 JWT validation middleware
+export const validateAuth0Token = (req, res, next) => {
+  try {
+    // Check if Auth0 domain is configured
+    if (!config.auth0.domain) {
+      console.error("Auth0 domain is not configured");
+      return res.status(500).json({ message: "Auth0 configuration error: domain not set" });
+    }
+
+    // Create the middleware
+    const jwtCheck = expressjwt({
+      secret: jwksRsa.expressJwtSecret({
+        cache: true,
+        rateLimit: true,
+        jwksRequestsPerMinute: 5,
+        jwksUri: `https://${config.auth0.domain}/.well-known/jwks.json`,
+      }),
+      audience: config.auth0.audience,
+      issuer: `https://${config.auth0.domain}/`,
+      algorithms: ["RS256"],
+    });
+
+    // Apply the middleware
+    jwtCheck(req, res, (err) => {
+      if (err) {
+        console.error("JWT validation error:", err.message);
+        return res.status(401).json({ message: `Unauthorized: ${err.message}` });
+      }
+      next();
+    });
+  } catch (error) {
+    console.error("Auth0 middleware error:", error);
+    return res.status(500).json({ message: `Auth0 configuration error: ${error.message}` });
+  }
+};
 
 // Middleware to handle Auth0 user
 export const handleAuth0User = asyncHandler(async (req, res, next) => {
   try {
     // Log the Auth0 token for debugging
     console.log("Auth0 token received:", req.auth ? "Valid token" : "No token");
-    console.log("Auth0 token claims:", req.auth ? Object.keys(req.auth) : "None");
+
+    // If we have a token, log its claims
+    if (req.auth) {
+      console.log("Auth0 token claims keys:", Object.keys(req.auth));
+      console.log("Auth0 token claims:", JSON.stringify(req.auth, null, 2));
+    } else {
+      console.log("No Auth0 token claims available");
+    }
 
     if (!req.auth || !req.auth.sub) {
-      throw new ApiError(401, "Unauthorized: Invalid Auth0 token");
+      console.error("Missing sub claim in Auth0 token");
+      return res
+        .status(401)
+        .json({ message: "Unauthorized: Invalid Auth0 token - missing sub claim" });
     }
 
     const auth0Id = req.auth.sub;

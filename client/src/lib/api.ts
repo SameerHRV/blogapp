@@ -5,7 +5,9 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1";
 
 // Helper function to get auth token
 const getAuthToken = (): string | null => {
-  return localStorage.getItem("accessToken");
+  const token = localStorage.getItem("accessToken");
+  console.log("API: Auth token from localStorage:", token ? "[TOKEN FOUND]" : "[NO TOKEN]");
+  return token;
 };
 
 // Helper function to handle API errors
@@ -29,6 +31,9 @@ export const apiRequest = async <T>(endpoint: string, options: RequestInit = {})
     // Add auth token if available
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
+      console.log("API: Added Authorization header with token");
+    } else {
+      console.log("API: No token available for Authorization header");
     }
 
     // Log the request details

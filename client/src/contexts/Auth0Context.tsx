@@ -42,22 +42,42 @@ export const Auth0Provider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Login with Google
   const loginWithGoogle = () => {
-    loginWithRedirect({
-      authorizationParams: {
-        connection: "google-oauth2",
-        scope: import.meta.env.VITE_AUTH0_SCOPE || "openid profile email",
-      },
-    });
+    try {
+      console.log("Initiating Google login with Auth0");
+      loginWithRedirect({
+        authorizationParams: {
+          connection: "google-oauth2",
+          scope: "openid profile email offline_access",
+          response_type: "code",
+        },
+        appState: {
+          returnTo: window.location.pathname,
+        },
+      });
+    } catch (error) {
+      console.error("Error initiating Google login:", error);
+      toast.error("Could not connect to authentication service. Please try again later.");
+    }
   };
 
   // Login with Facebook
   const loginWithFacebook = () => {
-    loginWithRedirect({
-      authorizationParams: {
-        connection: "facebook",
-        scope: import.meta.env.VITE_AUTH0_SCOPE || "openid profile email",
-      },
-    });
+    try {
+      console.log("Initiating Facebook login with Auth0");
+      loginWithRedirect({
+        authorizationParams: {
+          connection: "facebook",
+          scope: "openid profile email offline_access",
+          response_type: "code",
+        },
+        appState: {
+          returnTo: window.location.pathname,
+        },
+      });
+    } catch (error) {
+      console.error("Error initiating Facebook login:", error);
+      toast.error("Could not connect to authentication service. Please try again later.");
+    }
   };
 
   // Handle Auth0 login
@@ -67,16 +87,44 @@ export const Auth0Provider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.log("Auth0 user info:", user);
 
       // Get Auth0 token with specific scopes
-      const token = await getAccessTokenSilently({
-        authorizationParams: {
-          scope: import.meta.env.VITE_AUTH0_SCOPE || "openid profile email",
-        },
-      });
+      console.log("Requesting token with offline_access scope...");
+      let tokenResponse;
+      try {
+        tokenResponse = await getAccessTokenSilently({
+          authorizationParams: {
+            scope: "openid profile email offline_access",
+            response_type: "code",
+          },
+          detailedResponse: true,
+          cacheMode: "off", // Force a new token request
+        });
 
-      console.log("Auth0 token received, calling backend...");
+        console.log("Token response received");
+        console.log("Token includes refresh_token:", !!tokenResponse.refresh_token);
+        console.log("Token includes id_token:", !!tokenResponse.id_token);
+        console.log("Token includes access_token:", !!tokenResponse.access_token);
+      } catch (tokenError) {
+        console.error("Error getting token:", tokenError);
+        throw tokenError;
+      }
+
+      console.log("Auth0 token received:", tokenResponse ? "[TOKEN RECEIVED]" : "[NO TOKEN]");
+
+      // Check if we have a refresh token
+      if (tokenResponse.refresh_token) {
+        console.log("Refresh token received");
+        // Store the refresh token if needed
+        localStorage.setItem("auth0RefreshToken", tokenResponse.refresh_token);
+      } else {
+        console.warn("No refresh token received from Auth0");
+      }
+
+      // Use the access token to call our API
+      const accessToken = tokenResponse.access_token || tokenResponse;
+      console.log("Calling backend with access token...");
 
       // Call our API to get user data and JWT token
-      const userData = await auth0Service.getCurrentUser(token);
+      const userData = await auth0Service.getCurrentUser(accessToken);
       console.log("Backend authentication successful");
 
       // Login with our JWT token

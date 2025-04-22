@@ -5,6 +5,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { useAuth0Context } from "@/contexts/Auth0Context";
 import { useAuth } from "@/contexts/AuthContext";
+import api from "@/lib/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Facebook, Loader2, LogIn } from "lucide-react";
 import React, { useEffect, useState } from "react";
@@ -64,6 +65,41 @@ const LoginPage: React.FC = () => {
     loginWithFacebook();
   };
 
+  // Development login for testing
+  const handleDevLogin = async () => {
+    setIsLoading(true);
+    try {
+      console.log("Development login: Starting...");
+      // Call the development login endpoint
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/dev-login`);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Development login failed:", errorData);
+        throw new Error(errorData.message || "Development login failed");
+      }
+
+      const data = await response.json();
+      console.log("Development login: Success, received token");
+
+      // Store the token directly in localStorage
+      localStorage.setItem("accessToken", data.data.accessToken);
+      console.log("Development login: Token stored in localStorage");
+
+      // Login with the token
+      loginWithToken(data.data.accessToken);
+      toast.success("Development login successful!");
+
+      // Navigate to the requested page
+      navigate(from, { replace: true });
+    } catch (error) {
+      console.error("Development login error:", error);
+      toast.error(`Login failed: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <BlogLayout>
       <div className="blog-container py-12 flex justify-center">
@@ -108,6 +144,29 @@ const LoginPage: React.FC = () => {
                 <Facebook className="mr-2 h-4 w-4" />
                 Facebook
               </Button>
+            </div>
+
+            {/* Direct Auth0 login button with explicit code flow */}
+            <Button
+              variant="outline"
+              className="w-full"
+              type="button"
+              onClick={() => {
+                window.location.href = `https://dev-8v6uq83ygwkn1fa4.us.auth0.com/authorize?response_type=code&client_id=SwNlu3Mc09z9PaoMl0QCsM3Ynd0GRSUs&redirect_uri=${encodeURIComponent(
+                  "http://localhost:8080/callback"
+                )}&scope=openid%20profile%20email%20offline_access&audience=${encodeURIComponent(
+                  "https://dev-8v6uq83ygwkn1fa4.us.auth0.com"
+                )}`;
+              }}
+              disabled={isLoading || auth0Loading}
+            >
+              <LogIn className="mr-2 h-4 w-4" />
+              Auth0 Universal Login
+            </Button>
+
+            {/* Fallback message if Auth0 is not available */}
+            <div className="text-xs text-center text-muted-foreground">
+              If social login is unavailable, please use the form below or the development login option.
             </div>
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -168,6 +227,26 @@ const LoginPage: React.FC = () => {
                 Sign up
               </Link>
             </div>
+            {import.meta.env.DEV && (
+              <>
+                <div className="text-xs text-center text-muted-foreground mb-2">
+                  Auth0 service not working? Use the development login below:
+                </div>
+                <Button variant="secondary" className="mt-2 w-full" onClick={handleDevLogin} disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Please wait
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Development Login
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
           </CardFooter>
         </Card>
       </div>
